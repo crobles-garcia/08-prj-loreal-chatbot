@@ -13,16 +13,23 @@ Ask for the user's name early on if not provided, and use it occasionally in res
   }
 ];
 
-// Render initial welcome
-appendMessage("ai", "💄 Hi there! I’m here to help you find the perfect L’Oréal products and routines. What would you like to know?");
-
-// Main chat handler
+// Helper: format markdown to HTML (bold, line breaks, numbered steps)
 function formatMarkdown(text) {
   return text
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold text
-    .replace(/\n/g, "<br>") // new lines
-    .replace(/(\d+)\.\s/g, "<br><strong>$1.</strong> "); // numbered list start
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>")
+    .replace(/(\d+)\.\s/g, "<br><strong>$1.</strong> ");
 }
+
+// Scroll chat to bottom
+function scrollToBottom() {
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+// Initial greeting
+appendMessage("ai", "💄 Hi there! I’m here to help you find the perfect L’Oréal products and routines. What would you like to know?");
+
+// Handle chat submission
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const userText = userInput.value.trim();
@@ -30,7 +37,7 @@ chatForm.addEventListener("submit", async (e) => {
 
   userInput.value = "";
 
-  // Group user + assistant messages in one block
+  // Group user and assistant messages
   const groupEl = document.createElement("div");
   groupEl.classList.add("msg-group");
 
@@ -42,13 +49,11 @@ chatForm.addEventListener("submit", async (e) => {
   const aiMsg = document.createElement("div");
   aiMsg.classList.add("msg", "ai");
   aiMsg.textContent = "✨ Loading your personalized beauty advice...";
-
   groupEl.appendChild(aiMsg);
 
   chatWindow.appendChild(groupEl);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  scrollToBottom();
 
-  // Update history
   chatHistory.push({ role: "user", content: userText });
 
   try {
@@ -58,7 +63,10 @@ chatForm.addEventListener("submit", async (e) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        messages: chatHistory
+        model: "gpt-3.5-turbo",
+        messages: chatHistory,
+        temperature: 0.7,
+        max_tokens: 1500 // ✅ Prevents reply cutoff
       })
     });
 
@@ -67,25 +75,23 @@ chatForm.addEventListener("submit", async (e) => {
 
     aiMsg.innerHTML = formatMarkdown(aiReply);
     chatHistory.push({ role: "assistant", content: aiReply });
+    scrollToBottom();
   } catch (error) {
     console.error("API error:", error);
     aiMsg.textContent = "❌ Sorry, I’m having trouble right now. Please try again later.";
   }
-
-  chatWindow.scrollTop = chatWindow.scrollHeight;
 });
 
-// Reusable function for standalone messages (e.g. initial greeting)
+// Standalone message (greeting, fallback, etc.)
 function appendMessage(role, content) {
   const groupEl = document.createElement("div");
   groupEl.classList.add("msg-group");
 
   const msgEl = document.createElement("div");
   msgEl.classList.add("msg", role);
-  msgEl.textContent = content;
+  msgEl.innerHTML = formatMarkdown(content);
 
   groupEl.appendChild(msgEl);
   chatWindow.appendChild(groupEl);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  scrollToBottom();
 }
-
