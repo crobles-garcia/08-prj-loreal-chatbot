@@ -206,3 +206,10 @@ body {
 .msg.ai br {
   margin-bottom: 6px;
 }
+.site-subtitle {
+  font-family: "Montserrat", sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #333;
+  margin-top: 8px;
+}
