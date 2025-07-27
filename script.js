@@ -5,60 +5,87 @@ const chatWindow = document.getElementById("chatWindow");
 const chatHistory = [
   {
     role: "system",
-    content:
-      "You are a helpful and professional assistant for L’Oréal. Only respond to questions about L’Oréal products, skincare routines, haircare, and beauty recommendations. If the question is unrelated to L’Oréal, politely redirect the user."
+    content: `You are a helpful and professional virtual assistant for L’Oréal. 
+Only answer questions related to L’Oréal products, skincare routines, haircare, makeup, and beauty-related topics. 
+If a user asks something unrelated (like history, tech, math, etc.), politely reply: 
+"I'm here to help with L’Oréal products and beauty-related questions. Let me know how I can support your beauty journey!" 
+Ask for the user's name early on if not provided, and use it occasionally in responses.`
   }
 ];
 
-// Render message to chat window
-function appendMessage(role, content) {
-  const messageEl = document.createElement("div");
-  messageEl.classList.add("msg", role);
-  messageEl.textContent = content;
-  chatWindow.appendChild(messageEl);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+// Render initial welcome
+appendMessage("ai", "💄 Hi there! I’m here to help you find the perfect L’Oréal products and routines. What would you like to know?");
+
+// Main chat handler
+function formatMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold text
+    .replace(/\n/g, "<br>") // new lines
+    .replace(/(\d+)\.\s/g, "<br><strong>$1.</strong> "); // numbered list start
 }
-
-// Initial message
-appendMessage("ai", "👋 Hello! How can I help you today?");
-
-// Handle form submission
 chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const userText = userInput.value.trim();
   if (!userText) return;
 
-  appendMessage("user", userText);
-  chatHistory.push({ role: "user", content: userText });
   userInput.value = "";
 
-  appendMessage("ai", "🤖 Thinking...");
+  // Group user + assistant messages in one block
+  const groupEl = document.createElement("div");
+  groupEl.classList.add("msg-group");
+
+  const userMsg = document.createElement("div");
+  userMsg.classList.add("msg", "user");
+  userMsg.textContent = userText;
+  groupEl.appendChild(userMsg);
+
+  const aiMsg = document.createElement("div");
+  aiMsg.classList.add("msg", "ai");
+  aiMsg.textContent = "✨ Loading your personalized beauty advice...";
+
+  groupEl.appendChild(aiMsg);
+
+  chatWindow.appendChild(groupEl);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  // Update history
+  chatHistory.push({ role: "user", content: userText });
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://proj8-loreal.croblesg.workers.dev/", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer YOUR_OPENAI_API_KEY`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: chatHistory,
-        temperature: 0.7
+        messages: chatHistory
       })
     });
 
     const data = await response.json();
     const aiReply = data.choices[0].message.content;
 
-    // Remove "Thinking..." placeholder
-    const lastMsg = chatWindow.querySelector(".msg.ai:last-child");
-    if (lastMsg) lastMsg.remove();
-
-    appendMessage("ai", aiReply);
+    aiMsg.innerHTML = formatMarkdown(aiReply);
     chatHistory.push({ role: "assistant", content: aiReply });
   } catch (error) {
     console.error("API error:", error);
-    appendMessage("ai", "❌ Sorry, I’m having trouble right now. Please try again later.");
+    aiMsg.textContent = "❌ Sorry, I’m having trouble right now. Please try again later.";
   }
+
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 });
+
+// Reusable function for standalone messages (e.g. initial greeting)
+function appendMessage(role, content) {
+  const groupEl = document.createElement("div");
+  groupEl.classList.add("msg-group");
+
+  const msgEl = document.createElement("div");
+  msgEl.classList.add("msg", role);
+  msgEl.textContent = content;
+
+  groupEl.appendChild(msgEl);
+  chatWindow.appendChild(groupEl);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
